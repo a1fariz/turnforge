@@ -17,6 +17,7 @@
 using turnforge::Game;
 using turnforge::Phase;
 using turnforge::Position;
+using turnforge::EnemyIntent;
 
 namespace {
 constexpr int Width = 1280;
@@ -79,7 +80,8 @@ Vector2 tileCenter(Position p, Rectangle bounds) {
     const float tile = bounds.width / 8;
     return {bounds.x + (p.x + 0.5f) * tile, bounds.y + (p.y + 0.5f) * tile};
 }
-void board(const Game& g, const Characters& characters, Rectangle bounds, bool interactive) {
+void board(const Game& g, const Characters& characters, Rectangle bounds, bool interactive,
+           const std::vector<EnemyIntent>& intents = {}) {
     const float tile = bounds.width / 8;
     const auto range = g.movementDistances();
     const auto hover = interactive ? tileAt(GetMousePosition()) : Position{-1, -1};
@@ -109,6 +111,28 @@ void board(const Game& g, const Characters& characters, Rectangle bounds, bool i
             for (std::size_t i = 1; i < route.size(); ++i)
                 DrawLineEx(tileCenter(route[i - 1], bounds), tileCenter(route[i], bounds), 2, Fade(Teal, 0.65f));
     }
+    for (const auto& intent : intents) {
+        const Color color = intent.enemy == 0 ? Orange : Gold;
+        for (std::size_t i = 1; i < intent.route.size(); ++i) {
+            const auto from = tileCenter(intent.route[i - 1], bounds);
+            const auto to = tileCenter(intent.route[i], bounds);
+            DrawLineEx(from, to, 2, Fade(color, 0.8f));
+            const Vector2 tip{from.x + (to.x - from.x) * 0.78f, from.y + (to.y - from.y) * 0.78f};
+            const Vector2 back{(to.x - from.x) * 0.12f, (to.y - from.y) * 0.12f};
+            DrawLineEx(tip, {tip.x - back.x + back.y, tip.y - back.y - back.x}, 2, color);
+            DrawLineEx(tip, {tip.x - back.x - back.y, tip.y - back.y + back.x}, 2, color);
+        }
+        if (intent.route.size() > 1) {
+            const auto goal = intent.route.back();
+            const Rectangle marker{bounds.x + goal.x * tile + 5, bounds.y + goal.y * tile + 5, tile - 10, tile - 10};
+            DrawRectangleLinesEx(marker, 2, color);
+            text("E" + std::to_string(intent.enemy + 1), static_cast<int>(marker.x + 3), static_cast<int>(marker.y + 3), 12, color);
+        }
+    }
+    if (std::any_of(intents.begin(), intents.end(), [](const EnemyIntent& intent) { return intent.damage > 0; })) {
+        DrawRectangleLinesEx({bounds.x + g.player.position.x * tile + 2, bounds.y + g.player.position.y * tile + 2,
+                              tile - 4, tile - 4}, 3, Orange);
+    }
     characters.draw(g, bounds, interactive);
     if (interactive) {
         for (int i = 0; i < 8; ++i) {
@@ -135,7 +159,7 @@ void title(const Game& g, const Characters& characters) {
     board(g, characters, {744, 164, 416, 416}, false);
     text("Goblin mengejar. Bandit mencari sisi lain.", 744, 612, 16, Muted);
 }
-void hud(const Game& g, const Characters& characters) {
+void hud(const Game& g, const Characters& characters, const std::vector<EnemyIntent>& intents) {
     card({700, 112, 528, 568});
     const bool ours = g.phase == Phase::PlayerTurn;
     text(ours ? "GILIRANMU" : g.phase == Phase::EnemyTurn ? "GILIRAN MUSUH" : "PERTANDINGAN SELESAI", 728, 138, 28, ours ? Teal : Orange);
@@ -146,7 +170,21 @@ void hud(const Game& g, const Characters& characters) {
         const auto& e = g.enemies[i];
         const int row = 208 + i * 38;
         text(std::string(i == 0 ? "E1 GOBLIN " : "E2 BANDIT ") + (e.alive() ? std::to_string(e.hp) + "/6 HP" : "TUMBANG"), 976, row, 16, e.alive() ? Orange : Muted);
-        text(i == 0 ? "AGRESIF / KEJAR LANGSUNG" : "PENGEPUNG / CARI SISI LAIN", 976, row + 20, 10, Muted);
+        std::string action = i == 0 ? "AGRESIF / KEJAR LANGSUNG" : "PENGEPUNG / CARI SISI LAIN";
+        if (!intents.empty() && e.alive()) {
+            const auto intent = std::find_if(intents.begin(), intents.end(), [i](const EnemyIntent& candidate) { return candidate.enemy == i; });
+            action = "BATAL JIKA PEMAIN TUMBANG";
+            if (intent != intents.end()) {
+                action = "TUNGGU";
+                if (intent->route.size() > 1) {
+                    const auto goal = intent->route.back();
+                    action = "KE " + std::string(1, static_cast<char>('A' + goal.x)) + std::to_string(goal.y + 1);
+                }
+                if (intent->damage > 0) action = (intent->route.size() > 1 ? action + " / " : "") +
+                    "SERANG -" + std::to_string(intent->damage) + " HP";
+            }
+        }
+        text(action, 976, row + 20, 10, Muted);
     }
     card({728, 294, 224, 45}, {29, 44, 59, 255});
     card({976, 294, 224, 45}, {29, 44, 59, 255});
@@ -155,6 +193,10 @@ void hud(const Game& g, const Characters& characters) {
     text("Bertahan memakai jatah serang dan gerak.", 728, 351, 16, Muted);
     button(g.guarding ? "PERISAI AKTIF" : "BERTAHAN [G]", GuardButton, g.canGuard() && !characters.busy());
     button("AKHIRI [SPACE]", EndButton, ours && !characters.busy());
+    int damage = 0;
+    for (const auto& intent : intents) damage += intent.damage;
+    text(intents.empty() ? "PRAKIRAAN TERSEDIA SAAT GILIRANMU" : "AKHIRI SEKARANG: -" + std::to_string(damage) +
+         " HP" + (damage >= g.player.hp ? " / TUMBANG" : ""), 728, 439, 13, damage > 0 ? Orange : Muted);
     text("CATATAN ARENA", 728, 459, 14, Muted);
     for (std::size_t i = 0; i < g.log.size(); ++i) {
         DrawCircle(732, 495 + static_cast<int>(i) * 24, 2, i + 1 == g.log.size() ? Teal : Muted);
@@ -179,10 +221,12 @@ void draw(const Game& g, const Characters& characters) {
     text("TURNFORGE", 68, 28, 32);
     text("ARENA 01  /  LATIHAN TAKTIK", 72, 75, 14, Muted);
     text("RONDE " + std::to_string(g.round), 1056, 34, 20, Teal);
-    board(g, characters, Board, true);
-    hud(g, characters);
-    text("KLIK: GERAK / SERANG", 72, 670, 14, Muted);
-    text("[ESC] MENU", 466, 670, 14, Muted);
+    const auto intents = characters.busy() ? std::vector<EnemyIntent>{} : g.enemyIntents();
+    board(g, characters, Board, true, intents);
+    hud(g, characters, intents);
+    text("PANAH E1/E2: TUJUAN / BINGKAI PEMAIN: SERANG", 72, 655, 12, Muted);
+    text("KLIK: GERAK / SERANG", 72, 681, 12, Muted);
+    text("[ESC] MENU", 466, 681, 12, Muted);
     if ((g.phase == Phase::Won || g.phase == Phase::Lost) && !characters.busy()) result(g);
 }
 void input(Game& g, float& enemyTimer, const Characters& characters) {
@@ -387,6 +431,7 @@ int main(int argc, char** argv) {
     bool verifiedWin = false;
     bool verifiedLoss = false;
     bool verifiedGuard = false;
+    bool verifiedPreview = false;
     int guardHpBefore = 0;
     int automatedTurns = 0;
     const bool animationChecks = !automated || characters.selfCheck();
@@ -425,7 +470,19 @@ int main(int argc, char** argv) {
             if (frames == 185) {
                 valid = prepareCombat(game) && valid;
                 guardHpBefore = game.player.hp;
+            }
+            if (frames == 215) {
+                const auto intents = game.enemyIntents();
+                int damage = 0;
+                for (const auto& intent : intents) damage += intent.damage;
+                verifiedPreview = intents.size() == 2 && damage == 4 && !characters.busy();
+                valid = verifiedPreview && valid;
+            }
+            if (frames == 220) {
                 valid = game.tryGuard() && valid;
+                int damage = 0;
+                for (const auto& intent : game.enemyIntents()) damage += intent.damage;
+                verifiedPreview = verifiedPreview && damage == 2;
             }
             if (frames == 235) { valid = game.endTurn() && valid; enemyTimer = 0; }
             if (frames == 350) {
@@ -464,8 +521,9 @@ int main(int argc, char** argv) {
             if (frames == 150) capture("05-defeat");
             if (frames == 180) capture("06-restart");
             if (frames == 230) capture("09-guard");
+            if (frames == 215) capture("11-enemy-preview");
             if (frames == 255) capture("10-guard-hit");
-            const bool captureRecovery = frames == 4 || frames == 11 || frames == 19 || frames == 21 || frames == 59 || frames == 106 || frames == 151 || frames == 181 || frames == 231 || frames == 256;
+            const bool captureRecovery = frames == 4 || frames == 11 || frames == 19 || frames == 21 || frames == 59 || frames == 106 || frames == 151 || frames == 181 || frames == 216 || frames == 231 || frames == 256;
             if (frames > (benchmarkSeconds > 0 ? 360 : 5) && !captureRecovery)
                 frameTimes.push_back(GetFrameTime() * 1000.0);
         }
@@ -478,7 +536,7 @@ int main(int argc, char** argv) {
         PlayAutomationEvent({0, 18, {0, 0, 0, 0}});
         const bool windowCloseCheck = WindowShouldClose();
         // A timed benchmark may end during a valid animation; the scripted reset check must end idle.
-        valid = valid && windowCloseCheck && verifiedWin && verifiedLoss && verifiedGuard && restarts == 10 && frames >= 351 && characters.valid() &&
+        valid = valid && windowCloseCheck && verifiedWin && verifiedLoss && verifiedGuard && verifiedPreview && restarts == 10 && frames >= 351 && characters.valid() &&
             (benchmarkSeconds > 0 || !characters.busy());
         const double elapsed = GetTime() - start;
         const double mean = frameTimes.empty() ? 0 : std::accumulate(frameTimes.begin(), frameTimes.end(), 0.0) / frameTimes.size();
@@ -495,7 +553,8 @@ int main(int argc, char** argv) {
             ",\n  \"presentation_active_at_end\": " + std::string(characters.busy() ? "true" : "false") +
             ",\n  \"verified_win\": " + std::string(verifiedWin ? "true" : "false") +
             ",\n  \"verified_loss\": " + std::string(verifiedLoss ? "true" : "false") +
-            ",\n  \"verified_guard\": " + std::string(verifiedGuard ? "true" : "false") + "\n}\n";
+            ",\n  \"verified_guard\": " + std::string(verifiedGuard ? "true" : "false") +
+            ",\n  \"verified_preview\": " + std::string(verifiedPreview ? "true" : "false") + "\n}\n";
         std::cout << json;
         if (!captureDirectory.empty()) {
             std::ofstream output(captureDirectory / "verification.json");

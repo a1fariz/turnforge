@@ -1,0 +1,26 @@
+PASS initial layout
+PASS shortest path and unreachable cells
+PASS movement guards and range
+PASS occupied and dead units
+PASS invalid attacks
+PASS combat and action order
+PASS winning stops actions
+PASS phase guards and skip
+PASS adjacent enemy and lethal damage
+PASS enemy movement and deterministic tie break
+PASS blocked AI and dead-unit skipping
+PASS complete winning and losing matches
+PASS ten restarts and title
+PASS distinct goblin and bandit behavior
+PASS bandit fallback and detour budget
+PASS guard consumes actions
+PASS guard damage and expiry
+PASS invalid guard phases
+PASS guard without incoming damage
+PASS guarded lethal damage
+PASS read-only deterministic enemy preview
+PASS preview updates after movement and kills
+PASS guard and lethal enemy preview
+PASS preview phases blocked and corner
+24/24 scenarios; 352 checks
+PASS stress: 500 seeded sessions, 64433 actions, 1126045 checks, seed 20261030, 1 wins, 344 losses

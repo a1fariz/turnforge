@@ -1,0 +1,90 @@
+{
+  "Passed": true,
+  "Cases": [
+    {
+      "Name": "unknown-option",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "missing-capture-path",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "missing-duration",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "zero-duration",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "negative-duration",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "nan-duration",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "infinite-duration",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "overflow-duration",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "excessive-duration",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "trailing-number-text",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "nonnumeric-duration",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "extra-option",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "capture-path-is-file",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "missing-assets",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "corrupt-atlas",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "empty-atlas",
+      "Passed": true,
+      "ExitCode": 1
+    },
+    {
+      "Name": "short-benchmark-and-spaced-path",
+      "Passed": true,
+      "ExitCode": 0
+    }
+  ]
+}

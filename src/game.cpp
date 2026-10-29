@@ -234,6 +234,22 @@ void Game::stepEnemy() {
     if (activeEnemy() == -1) finishEnemyTurn();
 }
 
+std::vector<EnemyIntent> Game::enemyIntents() const {
+    if (phase != Phase::PlayerTurn) return {};
+    Game simulation = *this;
+    simulation.endTurn();
+    std::vector<EnemyIntent> intents;
+    while (simulation.phase == Phase::EnemyTurn) {
+        const int enemy = simulation.activeEnemy();
+        if (enemy < 0) break;
+        const Game before = simulation;
+        simulation.stepEnemy();
+        intents.push_back({enemy, before.path(before.enemies[enemy].position, simulation.enemies[enemy].position),
+                           before.player.hp - simulation.player.hp});
+    }
+    return intents;
+}
+
 bool Game::validInitialLayout() const {
     if (!player.alive() || wallAt(player.position)) return false;
     for (std::size_t i = 0; i < enemies.size(); ++i) {

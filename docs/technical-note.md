@@ -48,3 +48,11 @@ The v0.4 suite totals 20 scenarios / 268 checks. Guard cases cover action consum
 The automated core suite covers shortest-route detours, unreachable cells, invalid coordinates and targets, occupancy after death, action ordering, deterministic tie breaks, blocked AI, death mid-turn, a complete winning strategy, an idle losing match, and ten successive resets. v0.3 adds direct-versus-flanking behavior, opposite attack sides, deterministic flank decisions, a bounded detour, and dead-ally/adjacent/blocked/corner cases. These checks run without raylib and stay enabled in optimized builds.
 
 On the original map, a verified v0.3 winning opening is moving from `(1, 6)` to `(4, 6)`, then attacking the lowest-HP adjacent living enemy once each turn and ending the turn. The automated demo wins in round 6 with 2 HP remaining. Splitting damage using the old fixed enemy-index priority can now lose, so target selection matters. This demonstrates that the initial map remains winnable; it is not a broad balance study or evidence of a particular playtime.
+
+## Enemy preview — v0.5
+
+Game::enemyIntents() returns values only during PlayerTurn. It copies the game, ends the copied turn, and calls the same stepEnemy() implementation in spawn order. Each entry records the enemy ID, its route to the actual next position (at most two steps), and the actual HP decrease. The copy is discarded, preserving live units, actions, phase, round, message, and journal. A lethal hit stops the simulated phase, so later enemies have no promised action.
+
+Route reconstruction uses occupancy immediately before each copied enemy action. This follows moves made by earlier enemies and the deterministic BFS parent order. It does not draw a straight line through walls or show the full multi-turn pursuit path as a one-turn move.
+
+The window computes one forecast per rendered idle player frame and passes it to both board and HUD. Blocking movement/attack/death animations and non-player phases hide it. With two enemies on 64 tiles, recomputation avoids cache invalidation and a second AI planner. New tests compare forecast routes/HP loss with actual turns, verify non-mutation and determinism, and cover movement, kills, Guard, lethal hits, dead/blocked units, corners, and invalid phases. [Current verification](preview-verification.md).

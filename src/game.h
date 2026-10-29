@@ -27,6 +27,12 @@ struct Unit {
     bool alive() const { return hp > 0; }
 };
 
+struct EnemyIntent {
+    int enemy = -1;
+    std::vector<Position> route;
+    int damage = 0;
+};
+
 struct Game {
     std::array<bool, GridSize * GridSize> walls{};
     Unit player{{1, 6}, PlayerMaxHp};
@@ -57,6 +63,7 @@ struct Game {
     bool endTurn();
     int activeEnemy() const;
     void stepEnemy();
+    std::vector<EnemyIntent> enemyIntents() const;
     bool validInitialLayout() const;
 
 private:

@@ -2,11 +2,11 @@
 
 A small, offline turn-based tactical game built with C++17 and raylib 5.5.
 
-**Current version:** v0.4.1 · **Verified platform:** Windows · **Genre:** 2D tactical strategy
+**Current version:** v0.5.0 · **Verified platform:** Windows · **Genre:** 2D tactical strategy
 
 Move across an 8x8 arena, choose between attacking and guarding, and defeat two enemies. The project focuses on BFS pathfinding, deterministic enemy AI, validated gameplay rules, and a playable Windows build.
 
-![Turnforge gameplay](docs/screenshots/02-gameplay.png)
+![Turnforge gameplay](docs/screenshots/v0.5/02-gameplay.png)
 
 [Gameplay](#gameplay) · [Play and controls](#play) · [Build](#build-on-windows) · [Design](#design) · [Measured results](#measured-results) · [Tests](#automated-rendering-checks) · [Attribution](#scope-and-attribution)
 
@@ -32,7 +32,7 @@ Movement and combat use four directions. Walls and living units block paths. The
 | Pathfinding | BFS distances and route reconstruction on a uniformly weighted grid | [Technical note](docs/technical-note.md) |
 | Enemy AI | Direct pursuit and a deterministic flank preference with a bounded detour | [AI diagram](docs/images/06-ai-musuh.png) |
 | Rules and presentation | Gameplay code independent of raylib; sprite effects observe model changes | [Model interface](src/game.h), [character presentation](src/characters.cpp) |
-| Verification | Always-active Release checks, scripted rendering, memory sampling, and package checks | [Gameplay tests](tests/game_tests.cpp), [verification report](docs/verification.md) |
+| Verification | Always-active Release checks, scripted rendering, memory sampling, and package checks | [Gameplay tests](tests/game_tests.cpp), [verification report](docs/preview-verification.md) |
 | Delivery | CMake build, pinned dependency archives, offline Windows packaging | [Build script](scripts/build.ps1) |
 
 ## Play
@@ -54,11 +54,21 @@ This repository contains the source, artwork, and documentation. Build outputs a
 
 Movement dots show reachable tiles. The teal-cloaked knight is the player; E1 is the goblin and E2 the hooded bandit. Rings show the active unit or an attackable target, while bars/numbers show HP. Invalid actions explain why they were rejected and do not consume gameplay actions. Movement follows the grid path; attacks show a short lunge, slash, hit flash, and floating damage. Input waits briefly for an action's presentation to finish; Escape remains available.
 
+## Enemy preview — v0.5
+
+During an idle player turn, arrows labeled E1/E2 show the next enemy movement, outlined destinations show where they will stop, and an orange border on the player tile marks an incoming attack. The HUD lists each enemy action and the HP you would lose **if you end the turn now**, with a warning for a lethal result.
+
+The forecast uses a copy of the current match and the same enemy-turn code as live play. It updates after moving, killing an enemy, or guarding; it accounts for spawn order, changed occupancy, blocked enemies, solo pursuit, Guard, and cancellation after a lethal hit. HP loss is capped at remaining HP. It does not alter the match or commit an enemy action. The overlay hides during blocking action animations, enemy turns, title, and results. No extra key is needed.
+
+![Enemy preview before ending the turn](docs/screenshots/v0.5/11-enemy-preview.png)
+
+In the captured example, ending the turn costs 4 HP; activating Guard changes the forecast to 2 HP. Changing your actions can change the forecast.
+
 ## Guard — v0.4
 
 You may move before guarding, or guard without moving. You cannot guard after attacking, attack after guarding, or move again after guarding. Press Space to end the turn explicitly. A blue shield and the HUD indicate active protection; it reduces every hit during the following enemy phase and expires when your next turn starts, even if nobody attacks. Guard does not heal, stack, or prevent lethal damage.
 
-![Guard active](docs/screenshots/09-guard.png)
+![Guard active](docs/screenshots/v0.5/09-guard.png)
 
 ## Enemy tactics — v0.3
 
@@ -115,9 +125,10 @@ ctest --test-dir build/core -C Release --output-on-failure
 - [Stress tests](tests/qa_stress.cpp): seeded sessions, an independent path-distance oracle, state invariants, and deterministic replay.
 - [PRD](PRD.md): Indonesian product requirements, scope, rules, and acceptance criteria.
 - [Technical note](docs/technical-note.md): pathfinding and turn-management decisions.
-- [Verification](docs/verification.md): measured checks and practical limits.
+- [v0.5 verification](docs/preview-verification.md): preview correctness, measured checks, and practical limits.
+- [Previous full QA](docs/qa-report.md): the v0.4.1 baseline and fixed benchmark defects.
 
-The core suite contains 20 gameplay scenarios / 268 checks, including distinct roles, opposite-side positioning, detour limits, solo/blocked/adjacent/corner fallbacks, a complete focus-fire victory, and Guard action costs, expiry, damage, reset, and lethal-hit behavior. The render verifier also checks the character atlas, animation behavior, and reduced-damage presentation. Current measurements and limits are recorded in [Verification](docs/verification.md).
+The core suite contains 24 gameplay scenarios / 352 checks, including distinct roles, opposite-side positioning, detour limits, solo/blocked/adjacent/corner fallbacks, a complete focus-fire victory, and Guard action costs, expiry, damage, reset, and lethal-hit behavior. Preview cases compare actual AI turns with forecasts, check read-only state, and cover movement/kill/Guard updates, lethal cancellation, blocked/corner cases, and phase restrictions. The render verifier also checks the character atlas, animation behavior, and reduced-damage presentation. Current measurements and limits are recorded in [v0.5 verification](docs/preview-verification.md).
 
 CTest also runs a separate deterministic stress suite: 500 seeded sessions, 64,433 actions, and 1,126,045 checks. It compares paths with an independent distance oracle and checks occupancy, HP, rejected actions, and identical-state replay. Both suites passed in Release and in direct Debug builds with checked standard-library assertions. This is correctness coverage, not a player win-rate or balance study.
 
@@ -125,20 +136,20 @@ The map and starting stats are constants. A single BFS explores at most 64 tiles
 
 ## Measured results
 
-The v0.4.1 Release build was checked on Windows with an Intel Core i5-10310U and Intel UHD Graphics at 1280x720. These are local observations from 30 October 2026.
+The v0.5.0 Release build was checked on Windows with an Intel Core i5-10310U and Intel UHD Graphics at 1280x720. These are local observations from 30 October 2026.
 
 | Check | Recorded result |
 |---|---|
-| Core rules | 20/20 scenarios; 268 checks passed |
-| Sustained hidden-window run | 180.008 seconds without a crash |
-| Mean frame time | 17.138 ms, approximately 58.4 FPS |
-| p95 frame time | 18.056 ms |
-| Maximum timed enemy decision | 0.3386 ms |
-| Peak process working set | 139.99 MB |
-| Render smoke check | Ten screenshots, Guard, victory/defeat, and ten restarts passed |
+| Core rules | 24/24 scenarios; 352 checks passed |
+| Sustained hidden-window run | 180.013 seconds without a crash |
+| Mean frame time | 17.120 ms, approximately 58.4 FPS |
+| p95 frame time | 18.043 ms |
+| Maximum timed enemy decision | 0.7797 ms |
+| Peak process working set | 142.59 MB |
+| Render smoke check | Eleven screenshots, preview, Guard, victory/defeat, and ten restarts passed |
 | Windows package | Passed with PATH restricted to Windows system directories |
 
-The 60 FPS target was not fully reached in this run. Hidden-window results do not guarantee visible-window performance; physical mouse/keyboard playtesting and broader balance testing remain outstanding. See the [full verification report](docs/verification.md) for methods, raw reports, and limits.
+The 60 FPS target was not fully reached in this run. Hidden-window results do not guarantee visible-window performance; physical mouse/keyboard playtesting and broader balance testing remain outstanding. See the [current verification report](docs/preview-verification.md) for methods, raw reports, and limits.
 
 ## Automated rendering checks
 
@@ -147,7 +158,7 @@ build/Release/turnforge.exe --smoke-test --capture-dir build/smoke
 build/Release/turnforge.exe --benchmark-seconds 180 --capture-dir build/benchmark
 ```
 
-These modes use a hidden game window, exercise title/gameplay/enemy/victory/defeat/restart plus movement/attack/Guard views, and save ten screenshots plus timing results. The character self-check covers a route around a wall, completed movement, attack/hit timers, actual damage amounts, death fade, restart, and returning to title during movement. Benchmark mode runs at the same 1280x720 resolution and 60 FPS cap as the game, choosing Guard every fourth automated player action. Hidden-window measurements do not replace interactive testing on the target laptop.
+These modes use a hidden game window, exercise title/gameplay/enemy/victory/defeat/restart plus movement/attack/Guard/preview views, and save eleven screenshots plus timing results. The character self-check covers a route around a wall, completed movement, attack/hit timers, actual damage amounts, death fade, restart, and returning to title during movement. Benchmark mode runs at the same 1280x720 resolution and 60 FPS cap as the game, choosing Guard every fourth automated player action. Hidden-window measurements do not replace interactive testing on the target laptop.
 
 Automated runs also replay raylib keyboard/mouse events through the actual input controller: Enter/Start, valid and invalid clicks, G/Guard, Space/End Turn, R/Restart, Escape, phase restrictions, and animation locks. A window-close event checks the application's close state. These events do not operate the physical desktop. A short positive benchmark duration still completes the required 360-frame smoke sequence before finishing; malformed numeric durations are rejected before the renderer opens.
 
@@ -163,7 +174,7 @@ To check command-line validation, missing/corrupt/incomplete assets, a spaced ou
 powershell -ExecutionPolicy Bypass -File scripts/test-cli.ps1
 ```
 
-The [QA report](docs/qa-report.md) records coverage, fixes, and the remaining manual checks.
+The [v0.5 report](docs/preview-verification.md) records current checks and remaining manual work. The [v0.4.1 QA report](docs/qa-report.md) is retained as historical evidence.
 
 ## Scope and attribution
 

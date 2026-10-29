@@ -1,0 +1,25 @@
+PASS input: title rejects arena and gameplay keys
+PASS input: Enter starts a match
+PASS input: outside, own, wall, distant tile and distant target clicks preserve actions
+PASS input: reachable click starts movement
+PASS input: busy animation blocks gameplay input
+PASS input: Escape interrupts movement and clears presentation
+PASS input: Start and Guard buttons allow move then guard
+PASS input: guard blocks further moves and stacking
+PASS input: Space ends turn and preserves protection
+PASS input: enemy phase rejects player input
+PASS input: G guards without moving
+PASS input: combat fixture is reachable
+PASS input: adjacent enemy click attacks once
+PASS input: attack animation rejects repeated click and end turn
+PASS input: spent attack rejects Guard and End button advances turn
+PASS input: winning match fixture
+PASS input: result blocks arena and gameplay keys
+PASS input: R restarts from result
+PASS input: result restart button restores match
+PASS input: losing match fixture
+PASS input: result blocks arena and gameplay keys
+PASS input: R restarts from result
+PASS input: result restart button restores match
+PASS input: R cannot reset an active match
+PASS input: Escape returns from result

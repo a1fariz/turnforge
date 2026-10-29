@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| **Versi** | 1.5 — aksi Bertahan |
+| **Versi** | 1.6 — preview aksi musuh |
 | **Tanggal** | 30 Oktober 2026 |
 | **Pemilik produk** | Pengguna / pengembang project |
-| **Status** | MVP v0.4 dengan karakter 2D, AI berbeda, dan Bertahan diimplementasikan; hasil dan batas verifikasi ada di [catatan pengujian](docs/verification.md) |
+| **Status** | MVP v0.5 dengan karakter 2D, AI berbeda, Bertahan, dan preview aksi musuh diimplementasikan; hasil dan batas verifikasi ada di [catatan pengujian](docs/preview-verification.md) |
 | **Platform** | Windows desktop; target awal ThinkPad L13 Yoga Gen 1, RAM 16 GB, Intel integrated graphics |
 | **Bahasa antarmuka** | Indonesia |
 
-> Catatan: statistik gameplay, durasi, target performa, dan rancangan teknis adalah keputusan awal yang perlu divalidasi setelah prototipe berjalan. Hasil implementasi dan pengukuran aktual dicatat terpisah di [catatan pengujian](docs/verification.md); target dan estimasi di PRD ini tetap merupakan acuan desain.
+> Catatan: statistik gameplay, durasi, target performa, dan rancangan teknis adalah keputusan awal yang perlu divalidasi setelah prototipe berjalan. Hasil implementasi dan pengukuran aktual dicatat terpisah di [catatan pengujian](docs/preview-verification.md); target dan estimasi di PRD ini tetap merupakan acuan desain.
 
 ## Daftar Isi
 
@@ -52,6 +52,7 @@ Project menjadi portofolio awal gameplay programming dengan C++: aturan permaina
 | Visual v0.2 | Karakter 2D dengan presentasi aksi; tetap turn-based | Diminta pengguna |
 | AI v0.3 | Goblin mengejar; bandit mencari sisi lain dengan detour terbatas | Disetujui pengguna |
 | Bertahan v0.4 | Mengganti serangan untuk mengurangi damage musuh sampai giliran pemain berikutnya | Disetujui pengguna |
+| Preview v0.5 | Prakiraan tujuan gerak, serangan, dan HP yang hilang jika giliran diakhiri sekarang | Rancangan kelanjutan dari saran sebelumnya |
 
 ### Pemetaan produk
 
@@ -133,7 +134,7 @@ Persona berikut merupakan profil kebutuhan hipotetis, bukan hasil riset pengguna
 
 | Prioritas | Fitur |
 |---|---|
-| **Must** | Map 8×8, satu pemain, dua musuh melee dengan AI berbeda, gerak BFS, combat, Bertahan, turn, AI, karakter 2D dengan animasi ringan, HUD/feedback, layar awal/hasil/restart, tes, build Windows |
+| **Must** | Map 8×8, satu pemain, dua musuh melee dengan AI berbeda, gerak BFS, combat, Bertahan, preview aksi musuh, turn, AI, karakter 2D dengan animasi ringan, HUD/feedback, layar awal/hasil/restart, tes, build Windows |
 | **Should** | Polesan setelah playtest jika diperlukan; tidak ada fitur Should yang wajib untuk rilis pertama |
 | **Could** | Perluasan setelah MVP berdasarkan feedback atau kebutuhan lowongan; belum ditetapkan |
 | **Won't** | Seluruh non-tujuan pada Bagian 3.3 |
@@ -232,6 +233,14 @@ State minimum: `Title`, `PlayerTurn`, `EnemyTurn`, `Won`, `Lost`.
 
 ---
 
+### 6.6 Preview aksi musuh
+
+Saat giliran pemain dan animasi sudah selesai, tampilkan prakiraan jika End Turn dilakukan pada state saat ini. Salin state lalu jalankan AI yang sama sesuai urutan spawn; jangan mengubah pertandingan asli. Panah E1/E2 mengikuti maksimal dua langkah yang benar-benar akan ditempuh, bingkai tujuan menandai petak akhir, dan bingkai petak pemain menandai target serangan.
+
+HUD menampilkan aksi tiap musuh serta total HP yang akan hilang, termasuk pengurangan Bertahan dan clamp ke HP tersisa. Musuh mati dilewati; musuh tanpa jalur menunggu; jika hit pertama mematikan, aksi musuh berikutnya tidak ditampilkan sebagai aksi yang akan terjadi. Prakiraan dihitung ulang setelah gerak, serang/kill, dan Bertahan. Sembunyikan selama animasi, giliran musuh, Title, dan hasil. Perubahan aksi pemain dapat mengubah prakiraan; ini bukan reservasi aksi musuh.
+
+---
+
 ## 7. Kebutuhan Fungsional
 
 | ID | Fitur | Prioritas | Fase |
@@ -243,6 +252,7 @@ State minimum: `Title`, `PlayerTurn`, `EnemyTurn`, `Won`, `Lost`.
 | FR-05 | HUD, highlight, dan feedback | Must | MVP |
 | FR-06 | Mulai, hasil, restart, dan keluar | Must | MVP |
 | FR-07 | Bertahan dan indikator perisai | Must | v0.4 |
+| FR-08 | Preview aksi musuh | Must | v0.5 |
 
 ### 7.1 Detail fitur Must
 
@@ -340,6 +350,19 @@ State minimum: `Title`, `PlayerTurn`, `EnemyTurn`, `Won`, `Lost`.
 - [ ] Perlindungan habis pada giliran pemain berikutnya termasuk tanpa hit; serangan berikutnya kembali 2 damage.
 - [ ] Title, hasil, dan giliran musuh menolak aktivasi. Kematian, restart, dan Escape membersihkan status; damage tetap dapat membunuh.
 
+#### FR-08 Preview aksi musuh
+
+**User story:** Sebagai pemain, saya ingin mengetahui konsekuensi End Turn pada posisi saat ini agar dapat memilih serangan atau Bertahan.
+
+**Perilaku:** terapkan Bagian 6.6 melalui simulasi salinan state dengan planner AI asli. Informasi dilengkapi label E1/E2, teks aksi/HP, dan legenda.
+
+**Kriteria penerimaan:**
+
+- [ ] Tujuan dan HP yang hilang sesuai giliran musuh aktual, termasuk occupancy setelah musuh pertama bergerak, flank, menunggu, solo, serta pembatalan setelah lethal hit.
+- [ ] Preview tidak mengubah HP, posisi, map, jatah aksi, phase, ronde, urutan musuh, message, atau log pertandingan asli.
+- [ ] Gerak, kill, dan Bertahan memperbarui hasil; tidak ada state prakiraan yang tertinggal setelah restart atau Escape.
+- [ ] Panah, bingkai tujuan/target, label E1/E2, teks aksi, total HP, dan peringatan tumbang terbaca; preview disembunyikan di luar giliran pemain atau selama animasi.
+
 ### 7.2 Fitur Should / Could
 
 Belum ada fitur tambahan yang disepakati. Polesan atau perluasan dipilih setelah MVP memenuhi Bagian 12–14; tidak menjadi penghalang rilis pertama.
@@ -420,6 +443,7 @@ Arena di kiri dan status di kanan, ukuran jendela awal tetap 1280×720. Resize t
 | ADR-04 | Map dan statistik berupa konstanta | Satu arena tetap | Belum ada parser, editor, atau konfigurasi eksternal |
 | ADR-05 | Data dalam memori, tanpa server | Pertandingan offline tanpa progres persisten | Menutup/kembali ke awal mengakhiri sesi |
 | ADR-06 | Struktur sederhana dan standard library | Scope belum memerlukan engine/framework tambahan | Tidak ada ECS, event bus, atau plugin system |
+| ADR-07 | Preview memakai salinan Game dan stepEnemy yang sama | Prakiraan mengikuti urutan/occupancy/damage AI asli | Dihitung sekali tiap frame pemain idle; dua musuh pada grid 8×8; tidak perlu cache atau planner kedua |
 
 ### 10.2 Tech stack
 
@@ -462,6 +486,7 @@ Struktur di atas adalah inti implementasi. Folder `scripts/` menyediakan build d
 | Map | 64 tile lantai/tembok | Spawn legal; map tetap |
 | Unit | ID, pihak, posisi, HP | ID stabil; HP minimum 0; unit mati tidak menempati tile |
 | GameState | Phase, ronde, unit, jatah aksi pemain, status Bertahan | Aksi hanya pada phase dan jatah yang sesuai |
+| EnemyIntent | ID musuh, route sampai posisi akhir aktual, HP loss | Nilai hasil simulasi; tidak disimpan pada Game asli |
 | PresentationState | Hover, log lima aksi, timer musuh aktif | Timer tidak mengubah aturan gerak/damage |
 
 Occupancy dapat dihitung dari unit hidup; tidak perlu menyimpan salinan yang mudah berbeda dengan posisi unit. Gunakan value types jika mencukupi; tidak perlu hierarchy class untuk dua tipe unit sederhana.
@@ -503,8 +528,8 @@ Simpan hasil aktual pada catatan pengujian/README. Data uji tidak boleh ditampil
 
 | Jenis | Cakupan | Metode |
 |---|---|---|
-| Unit/logika | FR-01–FR-04 dan FR-07; BFS, occupancy, validasi, turn, damage, Bertahan | Executable tes melalui CTest, tanpa window |
-| Integrasi/manual | FR-05–FR-07; input → aksi → HUD → hasil → restart | Jalankan build dan ikuti skenario |
+| Unit/logika | FR-01–FR-04 dan FR-07–FR-08; BFS, occupancy, validasi, turn, damage, Bertahan, preview | Executable tes melalui CTest, tanpa window |
+| Integrasi/manual | FR-05–FR-08; input → aksi → HUD → hasil → restart | Jalankan build dan ikuti skenario |
 | Performa/stabilitas | NFR-01–NFR-05 | Sesi Release 3 menit dan 10 restart |
 | Kejelasan UI | NFR-08; jangkauan, label, feedback | Observasi playtest |
 | Distribusi | NFR-06 | Jalankan paket di luar source/IDE |
@@ -532,12 +557,15 @@ ID AC dari PRD v1.0 dipertahankan agar aturan lama tetap terlacak.
 | AC-15 | FR-07 | Bertahan sebelum/sesudah gerak, sesudah serang, atau dua kali | Menghabiskan serangan/sisa gerak; boleh setelah gerak; sesudah serang/aktivasi kedua ditolak |
 | AC-16 | FR-03, FR-07 | Dua hit, pergantian giliran, atau tidak terkena hit | Masing-masing hit 1; perlindungan habis pada giliran baru; damage berikutnya 2 |
 | AC-17 | FR-06, FR-07 | State invalid, lethal hit, restart, Escape | Aktivasi ditolak di luar giliran pemain; kematian tetap terjadi; status dibersihkan |
+| AC-18 | FR-08 | Preview dibandingkan giliran aktual | Route/tujuan, urutan, dan HP loss identik; menunggu, dead skip, serta lethal cancellation benar |
+| AC-19 | FR-08 | Preview diulang setelah gerak/kill/Bertahan | State asli tetap; hasil deterministik dan diperbarui tanpa cache lama |
+| AC-20 | FR-05, FR-08 | Preview pada giliran idle, animasi, musuh, dan hasil | Overlay serta HUD tampil hanya pada giliran pemain yang siap; label/legenda terbaca |
 
-Pemeriksaan tambahan: legalitas map/spawn, klik petak sendiri, serangan dua kali, input saat giliran musuh, tie-break AI, klik empat tepi arena/panel/luar arena, indikator sesuai validasi, Escape, tutup jendela, serta seluruh acceptance criteria FR-01–FR-07.
+Pemeriksaan tambahan: legalitas map/spawn, klik petak sendiri, serangan dua kali, input saat giliran musuh, tie-break AI, klik empat tepi arena/panel/luar arena, indikator sesuai validasi, Escape, tutup jendela, serta seluruh acceptance criteria FR-01–FR-08.
 
 ### 12.3 Definition of Done
 
-- [ ] Seluruh fitur Must dan AC-01–AC-17 lulus pemeriksaan yang sesuai.
+- [ ] Seluruh fitur Must dan AC-01–AC-20 lulus pemeriksaan yang sesuai.
 - [ ] Alur menang dan kalah terbukti dapat dimainkan pada map awal.
 - [ ] Tes logika berjalan tanpa window; konfigurasi tes tidak menonaktifkan pemeriksaan.
 - [ ] Kontrol, feedback, hasil, dan restart terverifikasi manual.
@@ -590,6 +618,7 @@ Belum ada estimasi kalender. Kemampuan C++, compiler, dan kapasitas waktu penggu
 | **M2 — Combat & AI** | FR-03–FR-04 | Aturan combat/turn/AI dan AC-05–AC-10 serta AC-12–AC-14 lulus |
 | **M3 — Alur lengkap** | FR-05–FR-06 | HUD, awal, hasil, restart, AC-11; menang/kalah dapat dimainkan |
 | **M3a — Bertahan v0.4** | FR-07, HUD/perisai dan damage aktual | AC-15–AC-17 dan smoke render Bertahan lulus |
+| **M3b — Preview v0.5** | FR-08, overlay/HUD, simulasi read-only | AC-18–AC-20 dan screenshot preview/guard lulus |
 | **M4 — Rilis portofolio** | QA, balance, benchmark, paket | Definition of Done dan checklist Bagian 13 selesai |
 
 ### Backlog fase lanjut
@@ -655,6 +684,8 @@ Pertanyaan ini tidak menghalangi penyimpanan PRD; keputusan yang memengaruhi set
 
 ### 17.2 Penelusuran revisi
 
+Versi 1.6 menambahkan preview aksi musuh, simulasi read-only memakai AI yang sama, indikator tujuan/target/HP loss, serta AC-18–AC-20. Aturan combat dan AI tidak diubah.
+
 Versi 1.5 menambahkan aksi Bertahan, biaya aksi, lifecycle perlindungan, indikator perisai, angka damage aktual, dan AC-15–AC-17. Publikasi portofolio serta pembaruan CV ditunda atas permintaan pengguna.
 
 Versi 1.4 menambahkan AI goblin agresif dan bandit pengepung, batas detour, fallback, indikator perilaku di HUD, serta AC-12–AC-14. HP, damage, batas aksi, map, dan kontrol tetap sama. Strategi kemenangan diverifikasi ulang dengan fokus pada musuh terluka.
@@ -677,4 +708,4 @@ Pola kerja: **Ponytail level full**, yaitu implementasi terkecil yang memenuhi k
 
 ---
 
-*Akhir dokumen — PRD v1.5*
+*Akhir dokumen — PRD v1.6*

@@ -359,6 +359,110 @@ void lethalGuardDamage() {
     game.start();
     expect(game.player.hp == 12 && !game.guarding && game.canGuard(), "Restart after guarded defeat clears protection");
 }
+
+void expectPreviewMatches(Game game) {
+    const auto intents = game.enemyIntents();
+    game.endTurn();
+    for (const auto& intent : intents) {
+        expect(game.activeEnemy() == intent.enemy, "Preview changed enemy action order");
+        const auto before = game;
+        game.stepEnemy();
+        expect(!intent.route.empty() && intent.route.front() == before.enemies[intent.enemy].position &&
+               intent.route.back() == game.enemies[intent.enemy].position && intent.route.size() <= 3,
+               "Preview destination differs from actual enemy turn");
+        expect(before.player.hp - game.player.hp == intent.damage, "Preview HP loss differs from actual enemy turn");
+        for (std::size_t i = 1; i < intent.route.size(); ++i)
+            expect(distance(intent.route[i - 1], intent.route[i]) == 1 && !before.wallAt(intent.route[i]) &&
+                   !before.occupied(intent.route[i]), "Preview route crosses an obstacle or occupied tile");
+    }
+    expect(game.phase != Phase::EnemyTurn, "Preview omitted an enemy that would act");
+}
+
+void previewIsReadOnly() {
+    auto game = emptyArena();
+    game.player.position = {3, 3};
+    game.enemies[0] = {{3, 2}, 6};
+    game.enemies[1] = {{1, 3}, 6};
+    const auto before = game;
+    const auto intents = game.enemyIntents();
+    expect(intents.size() == 2 && intents[0].enemy == 0 && intents[1].enemy == 1, "Preview must retain spawn order");
+    expect(intents[0].route.size() == 1 && intents[0].damage == 2, "Adjacent goblin preview");
+    expect(intents[1].route.back() == Position{2, 4} && intents[1].damage == 0, "Flanking preview must use actual bandit planner");
+    expect(game.phase == before.phase && game.round == before.round && game.enemyIndex == before.enemyIndex &&
+           game.moved == before.moved && game.attacked == before.attacked && game.guarding == before.guarding &&
+           game.walls == before.walls && game.log == before.log && game.message == before.message,
+           "Preview mutated turn state, map, actions or journal");
+    expect(game.player.position == before.player.position && game.player.hp == before.player.hp &&
+           game.enemies[0].position == before.enemies[0].position && game.enemies[0].hp == before.enemies[0].hp &&
+           game.enemies[1].position == before.enemies[1].position && game.enemies[1].hp == before.enemies[1].hp,
+           "Preview mutated living units");
+    const auto again = game.enemyIntents();
+    expect(again[0].route == intents[0].route && again[1].route == intents[1].route &&
+           again[0].damage == intents[0].damage && again[1].damage == intents[1].damage, "Preview must be deterministic");
+    expectPreviewMatches(game);
+}
+
+void previewUpdatesAfterActions() {
+    Game game;
+    game.start();
+    const auto initial = game.enemyIntents();
+    expectPreviewMatches(game);
+    expect(game.tryMove({4, 6}), "Preview movement fixture");
+    const auto moved = game.enemyIntents();
+    expect(moved.size() == 2 && moved[1].route != initial[1].route, "Preview did not update after player movement");
+    expectPreviewMatches(game);
+    game = emptyArena();
+    game.enemies[0] = {{1, 5}, 3};
+    game.enemies[1] = {{4, 6}, 6};
+    expect(game.enemyIntents().size() == 2 && game.tryAttack(0), "Preview kill fixture");
+    const auto afterKill = game.enemyIntents();
+    expect(afterKill.size() == 1 && afterKill[0].enemy == 1 && afterKill[0].damage == 2,
+           "Dead enemy still appears in preview or solo bandit uses stale ally");
+    expectPreviewMatches(game);
+}
+
+void previewGuardAndLethal() {
+    auto game = emptyArena();
+    game.enemies[0] = {{1, 5}, 6};
+    game.enemies[1] = {{2, 6}, 6};
+    auto intents = game.enemyIntents();
+    expect(intents.size() == 2 && intents[0].damage == 2 && intents[1].damage == 2, "Unguarded forecast damage");
+    expect(game.tryGuard(), "Guard forecast fixture");
+    intents = game.enemyIntents();
+    expect(intents.size() == 2 && intents[0].damage == 1 && intents[1].damage == 1, "Guard did not update forecast");
+    expectPreviewMatches(game);
+    game.player.hp = 1;
+    intents = game.enemyIntents();
+    expect(intents.size() == 1 && intents[0].enemy == 0 && intents[0].damage == 1,
+           "Lethal preview must clamp HP loss and cancel later enemy");
+    expectPreviewMatches(game);
+}
+
+void previewPhasesAndBlocked() {
+    Game game;
+    for (const auto phase : {Phase::Title, Phase::EnemyTurn, Phase::Won, Phase::Lost}) {
+        game.phase = phase;
+        expect(game.enemyIntents().empty() && game.phase == phase, "Preview must only exist on player turn");
+    }
+    game = emptyArena();
+    game.player.position = {0, 0};
+    game.enemies[1] = {{0, 3}, 6};
+    expectPreviewMatches(game);
+    game.enemies[1].position = {6, 6};
+    for (Position p : {Position{6, 5}, Position{7, 6}, Position{6, 7}, Position{5, 6}}) game.walls[p.y * 8 + p.x] = true;
+    const auto intents = game.enemyIntents();
+    expect(intents.size() == 1 && intents[0].enemy == 1 && intents[0].route == std::vector<Position>{{6, 6}} &&
+           intents[0].damage == 0, "Blocked enemy should preview waiting on its current tile");
+    expectPreviewMatches(game);
+    game = emptyArena();
+    game.player.position = {3, 3};
+    game.enemies[0] = {{1, 3}, 6};
+    game.walls[3 * 8 + 2] = true;
+    const auto detour = game.enemyIntents();
+    expect(detour.size() == 1 && detour[0].route == std::vector<Position>{{1, 3}, {1, 2}, {2, 2}},
+           "Preview must show the orthogonal route around a wall, not a direct diagonal");
+    expectPreviewMatches(game);
+}
 } // namespace
 
 int main() {
@@ -374,7 +478,11 @@ int main() {
         {"distinct goblin and bandit behavior", distinctEnemyRoles}, {"bandit fallback and detour budget", banditFallbacks},
         {"guard consumes actions", guardConsumesActions}, {"guard damage and expiry", guardDamageAndExpiry},
         {"invalid guard phases", invalidGuardPhases}, {"guard without incoming damage", guardWithoutDamage},
-        {"guarded lethal damage", lethalGuardDamage}};
+        {"guarded lethal damage", lethalGuardDamage},
+        {"read-only deterministic enemy preview", previewIsReadOnly},
+        {"preview updates after movement and kills", previewUpdatesAfterActions},
+        {"guard and lethal enemy preview", previewGuardAndLethal},
+        {"preview phases blocked and corner", previewPhasesAndBlocked}};
     int failures = 0;
     for (const auto& test : tests) {
         try { test.second(); std::cout << "PASS " << test.first << '\n'; }
