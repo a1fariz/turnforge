@@ -2,13 +2,44 @@
 
 A small, offline turn-based tactical game built with C++17 and raylib 5.5.
 
+**Current version:** v0.4.0 · **Verified platform:** Windows · **Genre:** 2D tactical strategy
+
 Move across an 8x8 arena, choose between attacking and guarding, and defeat two enemies. The project focuses on BFS pathfinding, deterministic enemy AI, validated gameplay rules, and a playable Windows build.
 
 ![Turnforge gameplay](docs/screenshots/02-gameplay.png)
 
+[Gameplay](#gameplay) · [Play and controls](#play) · [Build](#build-on-windows) · [Design](#design) · [Measured results](#measured-results) · [Tests](#automated-rendering-checks) · [Attribution](#scope-and-attribution)
+
+## Gameplay
+
+Control a teal-cloaked knight against a goblin and a hooded bandit in one fixed arena. Use walls and movement range to choose an approach, focus attacks to remove an enemy, or spend your attack on Guard. Defeat both enemies to win; reaching zero HP ends the match immediately.
+
+| Rule | Player | Each enemy |
+|---|---|---|
+| Starting HP | 12 | 6 |
+| Damage per attack | 3 | 2, reduced to 1 against Guard |
+| Movement per turn | Up to 3 tiles | Up to 2 tiles |
+| Attack range | One orthogonal neighbor | One orthogonal neighbor |
+| Actions per turn | Up to one move and one attack or Guard; attacking/guarding closes movement | Up to one move and one attack |
+
+Movement and combat use four directions. Walls and living units block paths. The player acts first, enemies act in spawn order, and the player explicitly ends each turn. Matches can be restarted after either result.
+
+## What this project demonstrates
+
+| Area | Implementation | Code or evidence |
+|---|---|---|
+| C++ gameplay rules | Action validation, damage, Guard expiry, and immediate win/loss transitions | [Game model](src/game.cpp) |
+| Pathfinding | BFS distances and route reconstruction on a uniformly weighted grid | [Technical note](docs/technical-note.md) |
+| Enemy AI | Direct pursuit and a deterministic flank preference with a bounded detour | [AI diagram](docs/images/06-ai-musuh.png) |
+| Rules and presentation | Gameplay code independent of raylib; sprite effects observe model changes | [Model interface](src/game.h), [character presentation](src/characters.cpp) |
+| Verification | Always-active Release checks, scripted rendering, memory sampling, and package checks | [Gameplay tests](tests/game_tests.cpp), [verification report](docs/verification.md) |
+| Delivery | CMake build, pinned dependency archives, offline Windows packaging | [Build script](scripts/build.ps1) |
+
 ## Play
 
 Extract the complete Windows release package, then open `turnforge.exe`. Keep the bundled `assets` folder beside the executable. No compiler, account, or network connection is required to play.
+
+This repository contains the source, artwork, and documentation. Build outputs and the Windows ZIP are generated locally with the command below; they are not committed to Git.
 
 | Input | Action |
 |---|---|
@@ -44,6 +75,13 @@ Tip: finish an injured enemy when possible instead of splitting attacks between 
 
 From a source checkout, requirements are a C++17 compiler on PATH (the provided script uses MinGW-w64 `g++` and `gcc`), PowerShell, and an OpenGL 3.3-capable graphics driver. The script uses CMake on PATH or a project-local portable copy. The first dependency download requires internet; versions and archive hashes are pinned.
 
+Clone the repository first. Access to this private repository requires an authorized GitHub account.
+
+```powershell
+git clone https://github.com/a1fariz/turnforge.git
+cd turnforge
+```
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Package
 ```
@@ -54,19 +92,21 @@ For a normal CMake installation (including other supported compilers/platforms),
 
 ```sh
 cmake -S . -B build/manual -DCMAKE_BUILD_TYPE=Release
-cmake --build build/manual --parallel 2
-ctest --test-dir build/manual --output-on-failure
+cmake --build build/manual --config Release --parallel 2
+ctest --test-dir build/manual -C Release --output-on-failure
 ```
 
 Only Windows is a verified release target. CMake can build the core tests without downloading raylib or opening a window:
 
 ```sh
 cmake -S . -B build/core -DTURNFORGE_BUILD_GAME=OFF
-cmake --build build/core --parallel 2
-ctest --test-dir build/core --output-on-failure
+cmake --build build/core --config Release --parallel 2
+ctest --test-dir build/core -C Release --output-on-failure
 ```
 
 ## Design
+
+![Gameplay architecture](docs/images/04-arsitektur.png)
 
 - `src/game.h` / `src/game.cpp`: grid, BFS, occupancy, action validation, damage, turns, deterministic AI, and terminal states. No dependency on raylib.
 - `src/main.cpp`: input mapping, rendering, enemy presentation timer, and optional automated render verification.
@@ -80,10 +120,27 @@ The core suite contains 20 gameplay scenarios / 268 checks, including distinct r
 
 The map and starting stats are constants. A single BFS explores at most 64 tiles; movement costs are uniform, so A* and a separate engine framework are unnecessary. Occupancy is derived from living units rather than a duplicate mutable grid. Enemies act in stable spawn order and re-evaluate occupancy before each move.
 
+## Measured results
+
+The v0.4 Release build was checked on Windows with an Intel Core i5-10310U and Intel UHD Graphics at 1280x720. These are local observations from 30 October 2026.
+
+| Check | Recorded result |
+|---|---|
+| Core rules | 20/20 scenarios; 268 checks passed |
+| Sustained hidden-window run | 180.012 seconds without a crash |
+| Mean frame time | 17.520 ms, approximately 57.1 FPS |
+| p95 frame time | 19.326 ms |
+| Maximum timed enemy decision | 1.0025 ms |
+| Peak process working set | 225.69 MB |
+| Render smoke check | Ten screenshots, Guard, victory/defeat, and ten restarts passed |
+| Windows package | Passed with PATH restricted to Windows system directories |
+
+The 60 FPS target was not fully reached in this run. Hidden-window results do not guarantee visible-window performance; physical mouse/keyboard playtesting and broader balance testing remain outstanding. See the [full verification report](docs/verification.md) for methods, raw reports, and limits.
+
 ## Automated rendering checks
 
 ```powershell
-build/Release/turnforge.exe --smoke-test --capture-dir docs/screenshots
+build/Release/turnforge.exe --smoke-test --capture-dir build/smoke
 build/Release/turnforge.exe --benchmark-seconds 180 --capture-dir build/benchmark
 ```
 
