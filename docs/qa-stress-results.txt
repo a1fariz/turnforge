@@ -1,0 +1,5 @@
+Release (clean CMake build):
+PASS stress: 500 seeded sessions, 64433 actions, 1126045 checks, seed 20261030, 1 wins, 344 losses
+
+Debug (core-only CMake build, -D_GLIBCXX_ASSERTIONS):
+PASS stress: 500 seeded sessions, 64433 actions, 1126045 checks, seed 20261030, 1 wins, 344 losses

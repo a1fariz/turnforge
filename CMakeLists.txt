@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(Turnforge VERSION 0.4.0 LANGUAGES C CXX)
+project(Turnforge VERSION 0.4.1 LANGUAGES C CXX)
 
 option(TURNFORGE_BUILD_GAME "Build the raylib desktop game" ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -19,6 +19,9 @@ if(BUILD_TESTING)
     add_executable(turnforge_tests tests/game_tests.cpp)
     target_link_libraries(turnforge_tests PRIVATE turnforge_core)
     add_test(NAME gameplay_rules COMMAND turnforge_tests)
+    add_executable(turnforge_stress tests/qa_stress.cpp)
+    target_link_libraries(turnforge_stress PRIVATE turnforge_core)
+    add_test(NAME gameplay_stress COMMAND turnforge_stress)
 endif()
 
 if(TURNFORGE_BUILD_GAME)

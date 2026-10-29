@@ -2,7 +2,7 @@
 
 A small, offline turn-based tactical game built with C++17 and raylib 5.5.
 
-**Current version:** v0.4.0 · **Verified platform:** Windows · **Genre:** 2D tactical strategy
+**Current version:** v0.4.1 · **Verified platform:** Windows · **Genre:** 2D tactical strategy
 
 Move across an 8x8 arena, choose between attacking and guarding, and defeat two enemies. The project focuses on BFS pathfinding, deterministic enemy AI, validated gameplay rules, and a playable Windows build.
 
@@ -112,26 +112,29 @@ ctest --test-dir build/core -C Release --output-on-failure
 - `src/main.cpp`: input mapping, rendering, enemy presentation timer, and optional automated render verification.
 - `src/characters.h` / `src/characters.cpp`: sprite loading, alpha bounds, facing, idle/movement/attack/hit/death presentation, and animation self-checks.
 - `tests/game_tests.cpp`: always-active checks for invalid moves/targets, shortest paths, blocked AI, turn order, death, complete matches, and ten restarts. Checks remain active in Release builds.
+- [Stress tests](tests/qa_stress.cpp): seeded sessions, an independent path-distance oracle, state invariants, and deterministic replay.
 - [PRD](PRD.md): Indonesian product requirements, scope, rules, and acceptance criteria.
 - [Technical note](docs/technical-note.md): pathfinding and turn-management decisions.
 - [Verification](docs/verification.md): measured checks and practical limits.
 
 The core suite contains 20 gameplay scenarios / 268 checks, including distinct roles, opposite-side positioning, detour limits, solo/blocked/adjacent/corner fallbacks, a complete focus-fire victory, and Guard action costs, expiry, damage, reset, and lethal-hit behavior. The render verifier also checks the character atlas, animation behavior, and reduced-damage presentation. Current measurements and limits are recorded in [Verification](docs/verification.md).
 
+CTest also runs a separate deterministic stress suite: 500 seeded sessions, 64,433 actions, and 1,126,045 checks. It compares paths with an independent distance oracle and checks occupancy, HP, rejected actions, and identical-state replay. Both suites passed in Release and in direct Debug builds with checked standard-library assertions. This is correctness coverage, not a player win-rate or balance study.
+
 The map and starting stats are constants. A single BFS explores at most 64 tiles; movement costs are uniform, so A* and a separate engine framework are unnecessary. Occupancy is derived from living units rather than a duplicate mutable grid. Enemies act in stable spawn order and re-evaluate occupancy before each move.
 
 ## Measured results
 
-The v0.4 Release build was checked on Windows with an Intel Core i5-10310U and Intel UHD Graphics at 1280x720. These are local observations from 30 October 2026.
+The v0.4.1 Release build was checked on Windows with an Intel Core i5-10310U and Intel UHD Graphics at 1280x720. These are local observations from 30 October 2026.
 
 | Check | Recorded result |
 |---|---|
 | Core rules | 20/20 scenarios; 268 checks passed |
-| Sustained hidden-window run | 180.012 seconds without a crash |
-| Mean frame time | 17.520 ms, approximately 57.1 FPS |
-| p95 frame time | 19.326 ms |
-| Maximum timed enemy decision | 1.0025 ms |
-| Peak process working set | 225.69 MB |
+| Sustained hidden-window run | 180.008 seconds without a crash |
+| Mean frame time | 17.138 ms, approximately 58.4 FPS |
+| p95 frame time | 18.056 ms |
+| Maximum timed enemy decision | 0.3386 ms |
+| Peak process working set | 139.99 MB |
 | Render smoke check | Ten screenshots, Guard, victory/defeat, and ten restarts passed |
 | Windows package | Passed with PATH restricted to Windows system directories |
 
@@ -146,11 +149,21 @@ build/Release/turnforge.exe --benchmark-seconds 180 --capture-dir build/benchmar
 
 These modes use a hidden game window, exercise title/gameplay/enemy/victory/defeat/restart plus movement/attack/Guard views, and save ten screenshots plus timing results. The character self-check covers a route around a wall, completed movement, attack/hit timers, actual damage amounts, death fade, restart, and returning to title during movement. Benchmark mode runs at the same 1280x720 resolution and 60 FPS cap as the game, choosing Guard every fourth automated player action. Hidden-window measurements do not replace interactive testing on the target laptop.
 
+Automated runs also replay raylib keyboard/mouse events through the actual input controller: Enter/Start, valid and invalid clicks, G/Guard, Space/End Turn, R/Restart, Escape, phase restrictions, and animation locks. A window-close event checks the application's close state. These events do not operate the physical desktop. A short positive benchmark duration still completes the required 360-frame smoke sequence before finishing; malformed numeric durations are rejected before the renderer opens.
+
 For process memory sampling, screenshot-dimension checks, and exit-code verification:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/verify.ps1 -BenchmarkSeconds 180
 ```
+
+To check command-line validation, missing/corrupt/incomplete assets, a spaced output path, and a short benchmark:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/test-cli.ps1
+```
+
+The [QA report](docs/qa-report.md) records coverage, fixes, and the remaining manual checks.
 
 ## Scope and attribution
 

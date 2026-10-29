@@ -38,6 +38,10 @@ $reportPath = Join-Path $OutputDirectory 'verification.json'
 if (-not (Test-Path -LiteralPath $reportPath)) { throw 'No verification report was written.' }
 $report = [System.IO.File]::ReadAllText($reportPath) | ConvertFrom-Json
 if (-not $report.passed) { throw 'The game reported a failed verification.' }
+foreach ($field in @('character_animation_checks','input_checks','window_close_check','verified_win','verified_loss','verified_guard')) {
+    if ($report.$field -ne $true) { throw ('Required verification did not pass: ' + $field) }
+}
+if ($report.verified_restarts -lt 10) { throw 'Fewer than ten restarts were verified.' }
 Add-Type -AssemblyName System.Drawing
 foreach ($name in @('01-title','02-gameplay','03-enemy-turn','04-victory','05-defeat','06-restart','07-character-walk','08-character-attack','09-guard','10-guard-hit')) {
     $screenshotPath = Join-Path $OutputDirectory ($name + '.png')

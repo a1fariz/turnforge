@@ -237,6 +237,100 @@ bool demoDefeat(Game& g) {
     for (int i = 0; i < 30 && g.phase == Phase::PlayerTurn; ++i) { g.endTurn(); resolve(g); }
     return g.phase == Phase::Lost;
 }
+bool inputSelfCheck(const Characters& characters) {
+    Game game;
+    Characters probe = characters;
+    probe.update(game, 0);
+    float timer = 1;
+    auto settle = [&]() { for (int i = 0; i < 40; ++i) probe.update(game, 0.03f); };
+    // Event IDs are defined by the pinned raylib 5.5 rcore.c automation format.
+    constexpr unsigned int KeyUp = 1, KeyDown = 2, MouseUp = 5, MouseDown = 6, MousePosition = 7;
+    auto key = [&](int code) {
+        PlayAutomationEvent({0, KeyDown, {code, 0, 0, 0}});
+        input(game, timer, probe);
+        probe.update(game, 0);
+        PlayAutomationEvent({0, KeyUp, {code, 0, 0, 0}});
+        PollInputEvents();
+    };
+    auto click = [&](int x, int y) {
+        PlayAutomationEvent({0, MousePosition, {x, y, 0, 0}});
+        PlayAutomationEvent({0, MouseDown, {MOUSE_BUTTON_LEFT, 0, 0, 0}});
+        input(game, timer, probe);
+        probe.update(game, 0);
+        PlayAutomationEvent({0, MouseUp, {MOUSE_BUTTON_LEFT, 0, 0, 0}});
+        PollInputEvents();
+    };
+    auto tile = [&](Position p) {
+        const auto center = tileCenter(p, Board);
+        click(static_cast<int>(center.x), static_cast<int>(center.y));
+    };
+    auto check = [](bool passed, const char* name) {
+        if (!passed) throw std::runtime_error(name);
+        std::cout << "PASS input: " << name << '\n';
+    };
+    try {
+        key(KEY_G); key(KEY_SPACE); key(KEY_R); tile({2, 6});
+        check(game.phase == Phase::Title, "title rejects arena and gameplay keys");
+        key(KEY_ENTER);
+        check(game.phase == Phase::PlayerTurn && game.canMove() && timer == 0, "Enter starts a match");
+        for (Vector2 p : {Vector2{71, 160}, {584, 160}, {104, 127}, {104, 640}, {700, 200}})
+            click(static_cast<int>(p.x), static_cast<int>(p.y));
+        tile(game.player.position); tile({2, 2}); tile({5, 6}); tile(game.enemies[0].position);
+        check(game.player.position == Position{1, 6} && !game.moved && !game.attacked,
+              "outside, own, wall, distant tile and distant target clicks preserve actions");
+        tile({2, 6}); probe.update(game, 0);
+        check(game.player.position == Position{2, 6} && probe.busy(), "reachable click starts movement");
+        key(KEY_G); key(KEY_SPACE); click(1080, 405);
+        check(game.phase == Phase::PlayerTurn && !game.guarding && !game.attacked, "busy animation blocks gameplay input");
+        key(KEY_ESCAPE); probe.update(game, 0);
+        check(game.phase == Phase::Title && !probe.busy(), "Escape interrupts movement and clears presentation");
+        click(250, 585); tile({2, 6}); probe.update(game, 0);
+        for (int i = 0; i < 40; ++i) probe.update(game, 0.03f);
+        click(840, 405);
+        check(game.guarding && game.moved && game.attacked, "Start and Guard buttons allow move then guard");
+        tile({3, 6}); key(KEY_G);
+        check(game.player.position == Position{2, 6} && game.guarding, "guard blocks further moves and stacking");
+        key(KEY_SPACE);
+        check(game.phase == Phase::EnemyTurn && game.guarding && timer == 0, "Space ends turn and preserves protection");
+        key(KEY_G); tile({3, 6}); click(1080, 405);
+        check(game.phase == Phase::EnemyTurn && game.enemyIndex == 0 && game.player.position == Position{2, 6},
+              "enemy phase rejects player input");
+        key(KEY_ESCAPE); key(KEY_ENTER); key(KEY_G);
+        check(game.phase == Phase::PlayerTurn && game.guarding, "G guards without moving");
+        check(prepareCombat(game), "combat fixture is reachable");
+        settle();
+        const int enemy = game.canAttack(0) ? 0 : 1;
+        const int hp = game.enemies[enemy].hp;
+        tile(game.enemies[enemy].position); probe.update(game, 0);
+        check(game.enemies[enemy].hp == hp - 3 && game.attacked && probe.busy(), "adjacent enemy click attacks once");
+        tile(game.enemies[enemy].position); key(KEY_SPACE);
+        check(game.enemies[enemy].hp == hp - 3 && game.phase == Phase::PlayerTurn, "attack animation rejects repeated click and end turn");
+        for (int i = 0; i < 40; ++i) probe.update(game, 0.03f);
+        key(KEY_G); click(1080, 405);
+        check(!game.guarding && game.phase == Phase::EnemyTurn, "spent attack rejects Guard and End button advances turn");
+        for (bool won : {true, false}) {
+            check(won ? demoVictory(game) : demoDefeat(game), won ? "winning match fixture" : "losing match fixture");
+            settle();
+            const auto phase = game.phase;
+            tile({2, 6}); key(KEY_G); key(KEY_SPACE);
+            check(game.phase == phase, "result blocks arena and gameplay keys");
+            key(KEY_R);
+            check(game.phase == Phase::PlayerTurn && game.player.hp == 12 && game.round == 1 && !game.guarding,
+                  "R restarts from result");
+            if (won) demoVictory(game); else demoDefeat(game);
+            settle(); click(640, 455);
+            check(game.phase == Phase::PlayerTurn && game.validInitialLayout(), "result restart button restores match");
+        }
+        game.tryMove({4, 6}); settle(); key(KEY_R);
+        check(game.player.position == Position{4, 6} && game.moved, "R cannot reset an active match");
+        demoVictory(game); settle(); key(KEY_ESCAPE);
+        check(game.phase == Phase::Title, "Escape returns from result");
+    } catch (const std::exception& e) {
+        std::cerr << "FAIL input: " << e.what() << '\n';
+        return false;
+    }
+    return true;
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -248,7 +342,12 @@ int main(int argc, char** argv) {
         if (arg == "--smoke-test") smoke = true;
         else if (arg == "--capture-dir" && i + 1 < argc) captureDirectory = argv[++i];
         else if (arg == "--benchmark-seconds" && i + 1 < argc) {
-            try { benchmarkSeconds = std::stod(argv[++i]); }
+            try {
+                const std::string value = argv[++i];
+                std::size_t parsed = 0;
+                benchmarkSeconds = std::stod(value, &parsed);
+                if (parsed != value.size()) throw std::invalid_argument("trailing characters");
+            }
             catch (...) { std::cerr << "Invalid benchmark duration\n"; return 1; }
             if (!std::isfinite(benchmarkSeconds) || benchmarkSeconds <= 0 || benchmarkSeconds > 3600) return 1;
         } else { std::cerr << "Unknown or incomplete option: " << arg << '\n'; return 1; }
@@ -291,7 +390,8 @@ int main(int argc, char** argv) {
     int guardHpBefore = 0;
     int automatedTurns = 0;
     const bool animationChecks = !automated || characters.selfCheck();
-    bool valid = animationChecks && tileAt({71.9f, 128}) == Position{-1, -1} &&
+    const bool inputChecks = !automated || inputSelfCheck(characters);
+    bool valid = animationChecks && inputChecks && tileAt({71.9f, 128}) == Position{-1, -1} &&
         tileAt({72, 128}) == Position{0, 0} && tileAt({583.9f, 639.9f}) == Position{7, 7} &&
         tileAt({584, 200}) == Position{-1, -1} && tileAt({100, 640}) == Position{-1, -1} &&
         tileAt({728, 400}) == Position{-1, -1};
@@ -371,11 +471,14 @@ int main(int argc, char** argv) {
         }
         ++frames;
         if (automated && ((benchmarkSeconds <= 0 && frames >= 360) ||
-                          (benchmarkSeconds > 0 && GetTime() - start >= benchmarkSeconds))) break;
+                          (benchmarkSeconds > 0 && frames >= 360 && GetTime() - start >= benchmarkSeconds))) break;
     }
     if (automated) {
+        // raylib 5.5 automation event 18 exercises its window-close state without desktop input.
+        PlayAutomationEvent({0, 18, {0, 0, 0, 0}});
+        const bool windowCloseCheck = WindowShouldClose();
         // A timed benchmark may end during a valid animation; the scripted reset check must end idle.
-        valid = valid && verifiedWin && verifiedLoss && verifiedGuard && restarts == 10 && frames >= 351 && characters.valid() &&
+        valid = valid && windowCloseCheck && verifiedWin && verifiedLoss && verifiedGuard && restarts == 10 && frames >= 351 && characters.valid() &&
             (benchmarkSeconds > 0 || !characters.busy());
         const double elapsed = GetTime() - start;
         const double mean = frameTimes.empty() ? 0 : std::accumulate(frameTimes.begin(), frameTimes.end(), 0.0) / frameTimes.size();
@@ -387,6 +490,8 @@ int main(int argc, char** argv) {
             ",\n  \"max_enemy_decision_ms\": " + std::to_string(maxEnemyMs) +
             ",\n  \"verified_restarts\": " + std::to_string(restarts) +
             ",\n  \"character_animation_checks\": " + std::string(animationChecks ? "true" : "false") +
+            ",\n  \"input_checks\": " + std::string(inputChecks ? "true" : "false") +
+            ",\n  \"window_close_check\": " + std::string(windowCloseCheck ? "true" : "false") +
             ",\n  \"presentation_active_at_end\": " + std::string(characters.busy() ? "true" : "false") +
             ",\n  \"verified_win\": " + std::string(verifiedWin ? "true" : "false") +
             ",\n  \"verified_loss\": " + std::string(verifiedLoss ? "true" : "false") +

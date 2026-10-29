@@ -1,7 +1,7 @@
 {
-  "Samples": 25,
-  "PeakWorkingSetMB": 141.53,
-  "PeakPrivateMB": 63.9,
+  "Samples": 18,
+  "PeakWorkingSetMB": 140.24,
+  "PeakPrivateMB": 63.47,
   "SamplingSeconds": 0.5,
   "RunMode": "Hidden window; automated gameplay and reset scenarios"
 }
