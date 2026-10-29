@@ -1,0 +1,60 @@
+cmake_minimum_required(VERSION 3.24)
+project(Turnforge VERSION 0.4.0 LANGUAGES C CXX)
+
+option(TURNFORGE_BUILD_GAME "Build the raylib desktop game" ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+add_library(turnforge_core src/game.cpp)
+target_include_directories(turnforge_core PUBLIC src)
+if(MSVC)
+    target_compile_options(turnforge_core PRIVATE /W4)
+else()
+    target_compile_options(turnforge_core PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(turnforge_tests tests/game_tests.cpp)
+    target_link_libraries(turnforge_tests PRIVATE turnforge_core)
+    add_test(NAME gameplay_rules COMMAND turnforge_tests)
+endif()
+
+if(TURNFORGE_BUILD_GAME)
+    include(FetchContent)
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(CUSTOMIZE_BUILD ON CACHE BOOL "" FORCE)
+    set(SUPPORT_MODULE_RAUDIO OFF CACHE BOOL "" FORCE)
+    set(SUPPORT_MODULE_RMODELS OFF CACHE BOOL "" FORCE)
+    set(SUPPORT_FILEFORMAT_QOI OFF CACHE BOOL "" FORCE)
+    set(SUPPORT_GIF_RECORDING OFF CACHE BOOL "" FORCE)
+    set(SUPPORT_CLIPBOARD_IMAGE OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(raylib
+        URL https://codeload.github.com/raysan5/raylib/zip/refs/tags/5.5
+        URL_HASH SHA256=00e8a7c85f7a5221e56ee8e4e1c6642b773eae73d29379a91c8ac5149e803f42
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    FetchContent_MakeAvailable(raylib)
+    add_executable(turnforge WIN32 src/main.cpp src/characters.cpp)
+    target_link_libraries(turnforge PRIVATE turnforge_core raylib)
+    add_custom_target(turnforge_assets ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:turnforge>/assets"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/characters.png" "$<TARGET_FILE_DIR:turnforge>/assets/characters.png"
+        VERBATIM)
+    add_dependencies(turnforge turnforge_assets)
+    if(MINGW)
+        target_link_options(turnforge PRIVATE -static -static-libgcc -static-libstdc++)
+    endif()
+    if(NOT MSVC)
+        target_compile_options(turnforge PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    install(TARGETS turnforge RUNTIME DESTINATION . COMPONENT Turnforge)
+    install(FILES README.md THIRD_PARTY_NOTICES.md PRD.md DESTINATION . COMPONENT Turnforge)
+    install(DIRECTORY docs/ DESTINATION docs COMPONENT Turnforge)
+    install(DIRECTORY assets/ DESTINATION assets COMPONENT Turnforge)
+    install(FILES "${raylib_SOURCE_DIR}/LICENSE" DESTINATION licenses RENAME raylib.txt COMPONENT Turnforge)
+    install(FILES "${raylib_SOURCE_DIR}/src/external/glfw/LICENSE.md" DESTINATION licenses RENAME glfw.txt COMPONENT Turnforge)
+    install(FILES licenses/glad.txt DESTINATION licenses COMPONENT Turnforge)
+endif()

@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "frames": 9662,
+  "elapsed_seconds": 180.012226,
+  "mean_frame_ms": 17.519725,
+  "p95_frame_ms": 19.325700,
+  "max_enemy_decision_ms": 1.002500,
+  "verified_restarts": 10,
+  "character_animation_checks": true,
+  "presentation_active_at_end": false,
+  "verified_win": true,
+  "verified_loss": true,
+  "verified_guard": true
+}
