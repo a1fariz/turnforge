@@ -22,6 +22,8 @@ using turnforge::EnemyIntent;
 namespace {
 constexpr int Width = 1280;
 constexpr int Height = 720;
+constexpr int DemoFps = 30;
+constexpr int DemoFrames = DemoFps * 66;
 constexpr Rectangle Board{72, 128, 512, 512};
 constexpr Rectangle StartButton{72, 558, 370, 62};
 constexpr Rectangle GuardButton{728, 378, 224, 54};
@@ -375,15 +377,31 @@ bool inputSelfCheck(const Characters& characters) {
     }
     return true;
 }
+std::string demoChapter(int frame) {
+    if (frame < 90) return "TURNFORGE | C++17 / RAYLIB / TACTICAL 2D";
+    if (frame < 120) return "01 / Read reachable tiles and enemy intentions";
+    if (frame < 180) return "02 / Walls block movement; invalid actions preserve the turn";
+    if (frame < 330) return "03 / Move along a valid BFS route";
+    if (frame < 480) return "04 / Goblin pursues; bandit takes another side";
+    if (frame < 600) return "05 / Forecast: ending this turn costs 2 HP";
+    if (frame < 720) return "06 / Guard reduces the incoming hit from 2 to 1";
+    if (frame < 900) return "07 / Enemies resolve in order; protection expires";
+    if (frame < 1170) return "08 / Focus attacks on the injured bandit";
+    if (frame < 1440) return "09 / A defeated enemy frees its tile";
+    if (frame < 1710) return "10 / Finish the remaining goblin";
+    return "VICTORY | One complete match / no stat changes";
+}
 } // namespace
 
 int main(int argc, char** argv) {
     bool smoke = false;
+    bool recordDemo = false;
     double benchmarkSeconds = 0;
     std::filesystem::path captureDirectory;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--smoke-test") smoke = true;
+        else if (arg == "--demo-dir" && i + 1 < argc) { recordDemo = true; captureDirectory = argv[++i]; }
         else if (arg == "--capture-dir" && i + 1 < argc) captureDirectory = argv[++i];
         else if (arg == "--benchmark-seconds" && i + 1 < argc) {
             try {
@@ -397,20 +415,24 @@ int main(int argc, char** argv) {
         } else { std::cerr << "Unknown or incomplete option: " << arg << '\n'; return 1; }
     }
     const bool automated = smoke || benchmarkSeconds > 0;
+    if (recordDemo && (automated || captureDirectory.empty())) {
+        std::cerr << "Demo recording requires a directory and cannot be combined with verification modes\n";
+        return 1;
+    }
     try {
         if (!captureDirectory.empty()) std::filesystem::create_directories(captureDirectory);
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
-    SetConfigFlags(FLAG_MSAA_4X_HINT | (automated ? FLAG_WINDOW_HIDDEN : 0));
+    SetConfigFlags(FLAG_MSAA_4X_HINT | ((automated || recordDemo) ? FLAG_WINDOW_HIDDEN : 0));
     SetTraceLogLevel(automated ? LOG_INFO : LOG_WARNING);
     InitWindow(Width, Height, "Turnforge | Tactical Arena");
     if (!IsWindowReady()) return 1;
     SetExitKey(KEY_NULL);
-    SetTargetFPS(60);
+    SetTargetFPS(recordDemo ? 0 : 60);
     Characters characters;
     const std::string atlasPath = (std::filesystem::path(GetApplicationDirectory()) / "assets" / "characters.png").string();
     if (!characters.load(atlasPath)) {
         std::cerr << "Unable to load complete character atlas: " << atlasPath << '\n';
-        if (!automated) {
+        if (!automated && !recordDemo) {
             while (!WindowShouldClose() && !IsKeyPressed(KEY_ESCAPE)) {
                 BeginDrawing(); ClearBackground(Background);
                 centered("Aset karakter tidak ditemukan.", {0, 250, Width, 80}, 30);
@@ -434,6 +456,10 @@ int main(int argc, char** argv) {
     bool verifiedPreview = false;
     int guardHpBefore = 0;
     int automatedTurns = 0;
+    int demoAttacks = 0;
+    int demoGuardHp = 0;
+    bool demoGuard = false;
+    bool demoGuardHit = false;
     const bool animationChecks = !automated || characters.selfCheck();
     const bool inputChecks = !automated || inputSelfCheck(characters);
     bool valid = animationChecks && inputChecks && tileAt({71.9f, 128}) == Position{-1, -1} &&
@@ -450,7 +476,56 @@ int main(int argc, char** argv) {
         }
     };
     while (!WindowShouldClose()) {
-        if (automated) {
+        const float frameDt = recordDemo ? 1.0f / DemoFps : GetFrameTime();
+        if (recordDemo) {
+            // raylib 5.5 event IDs: key up/down 1/2, mouse up/down/position 5/6/7.
+            for (int code : {KEY_ENTER, KEY_G, KEY_SPACE}) PlayAutomationEvent({0, 1, {code, 0, 0, 0}});
+            PlayAutomationEvent({0, 5, {MOUSE_BUTTON_LEFT, 0, 0, 0}});
+            auto key = [](int code) { PlayAutomationEvent({0, 2, {code, 0, 0, 0}}); };
+            auto click = [](Position tile) {
+                const auto center = tileCenter(tile, Board);
+                PlayAutomationEvent({0, 7, {static_cast<int>(center.x), static_cast<int>(center.y), 0, 0}});
+                PlayAutomationEvent({0, 6, {MOUSE_BUTTON_LEFT, 0, 0, 0}});
+            };
+            if (frames == 0) PlayAutomationEvent({0, 7, {640, 700, 0, 0}});
+            if (frames == 90) key(KEY_ENTER);
+            if (frames == 120) click({3, 4});
+            if (frames == 180) {
+                const auto center = tileCenter({4, 6}, Board);
+                PlayAutomationEvent({0, 7, {static_cast<int>(center.x), static_cast<int>(center.y), 0, 0}});
+            }
+            if (frames == 210) click({4, 6});
+            if (frames == 330 || frames == 720 || frames == 1020 || frames == 1290 || frames == 1560) key(KEY_SPACE);
+            if (frames == 600) { demoGuardHp = game.player.hp; key(KEY_G); }
+            int target = -1;
+            if (frames == 900 || frames == 1170 || frames == 1440 || frames == 1710) {
+                for (int i = 0; i < 2; ++i)
+                    if (game.canAttack(i) && (target == -1 || game.enemies[i].hp < game.enemies[target].hp)) target = i;
+                if (target < 0) valid = false;
+                else click(game.enemies[target].position);
+            }
+            const int targetHp = target < 0 ? 0 : game.enemies[target].hp;
+            input(game, enemyTimer, characters);
+            if (frames == 90) valid = valid && game.phase == Phase::PlayerTurn;
+            if (frames == 120) valid = valid && game.player.position == Position{1, 6} && !game.moved && !game.attacked;
+            if (frames == 210) valid = valid && game.player.position == Position{4, 6} && game.moved;
+            if (frames == 600) {
+                const auto forecast = game.enemyIntents();
+                int damage = 0;
+                for (const auto& intent : forecast) damage += intent.damage;
+                demoGuard = game.guarding && game.round == 2 && damage == 1;
+                valid = valid && demoGuard;
+            }
+            if (frames == 900) {
+                demoGuardHit = game.player.hp == demoGuardHp - 1 && !game.guarding && game.round == 3;
+                valid = valid && demoGuardHit;
+            }
+            if (target >= 0) {
+                const bool hit = game.enemies[target].hp == std::max(0, targetHp - 3);
+                valid = valid && hit;
+                if (hit) ++demoAttacks;
+            }
+        } else if (automated) {
             if (frames == 6) game.start();
             if (frames == 15) { game.tryMove({2, 6}); game.endTurn(); enemyTimer = 0; }
             if (frames == 40) {
@@ -499,7 +574,7 @@ int main(int argc, char** argv) {
             }
         } else input(game, enemyTimer, characters);
         if (game.phase == Phase::EnemyTurn && !characters.busy()) {
-            enemyTimer += GetFrameTime();
+            enemyTimer += frameDt;
             if (enemyTimer >= 0.30f) {
                 const auto before = std::chrono::steady_clock::now();
                 game.stepEnemy();
@@ -507,10 +582,21 @@ int main(int argc, char** argv) {
                 enemyTimer = 0;
             }
         } else if (game.phase != Phase::EnemyTurn) enemyTimer = 0;
-        characters.update(game, GetFrameTime());
+        characters.update(game, frameDt);
         BeginDrawing();
         draw(game, characters);
+        if (recordDemo) {
+            DrawRectangle(0, 0, Width, 24, Background);
+            text("SCRIPTED REPLAY / " + demoChapter(frames), 72, 5, 14, Muted);
+            // Capture the freshly drawn back buffer before swapping to the previous frame.
+            rlDrawRenderBatchActive();
+            capture("frame-" + std::to_string(1000000 + frames).substr(1));
+        }
         EndDrawing();
+        if (recordDemo) {
+            if (!valid) break;
+            if (frames % 300 == 0) std::cout << "Demo frames rendered: " << frames << '\n';
+        }
         if (automated) {
             if (frames == 3) capture("01-title");
             if (frames == 10) capture("02-gameplay");
@@ -528,8 +614,20 @@ int main(int argc, char** argv) {
                 frameTimes.push_back(GetFrameTime() * 1000.0);
         }
         ++frames;
+        if (recordDemo && frames >= DemoFrames) break;
         if (automated && ((benchmarkSeconds <= 0 && frames >= 360) ||
                           (benchmarkSeconds > 0 && frames >= 360 && GetTime() - start >= benchmarkSeconds))) break;
+    }
+    if (recordDemo) {
+        valid = valid && frames == DemoFrames && demoAttacks == 4 && demoGuard && demoGuardHit &&
+            game.phase == Phase::Won && game.round == 6 && game.player.hp == 3 && !characters.busy();
+        std::ofstream report(captureDirectory / "demo-report.json");
+        report << "{\n  \"passed\": " << (valid ? "true" : "false") << ",\n  \"frames\": " << frames
+               << ",\n  \"fps\": " << DemoFps << ",\n  \"duration_seconds\": 66,\n  \"attacks\": " << demoAttacks
+               << ",\n  \"guard_reduced_actual_hit\": " << (demoGuardHit ? "true" : "false")
+               << ",\n  \"won\": " << (game.phase == Phase::Won ? "true" : "false")
+               << ",\n  \"round\": " << game.round << ",\n  \"player_hp\": " << game.player.hp << "\n}\n";
+        if (!report) valid = false;
     }
     if (automated) {
         // raylib 5.5 automation event 18 exercises its window-close state without desktop input.
@@ -564,5 +662,5 @@ int main(int argc, char** argv) {
     }
     characters.unload();
     CloseWindow();
-    return automated && !valid ? 1 : 0;
+    return (automated || recordDemo) && !valid ? 1 : 0;
 }

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Versi** | 1.6 — preview aksi musuh |
+| **Versi** | 1.7 — demo gameplay lokal |
 | **Tanggal** | 30 Oktober 2026 |
 | **Pemilik produk** | Pengguna / pengembang project |
 | **Status** | MVP v0.5 dengan karakter 2D, AI berbeda, Bertahan, dan preview aksi musuh diimplementasikan; hasil dan batas verifikasi ada di [catatan pengujian](docs/preview-verification.md) |
@@ -590,6 +590,8 @@ Siapkan build yang dapat diulang; verifikasi aturan melalui tes dan playtest seb
 | Video 60–90 detik | Gerak, tembok, AI, combat, dan akhir pertandingan |
 | Catatan teknis | BFS atau turn management: masalah, pilihan solusi, edge case, dan bukti pengujian |
 
+Demo lokal v0.5.1 disiapkan sebagai replay otomatis 66 detik, 1280×720/30 FPS, dengan label metode perekaman yang terlihat. Rekaman memakai kontrol dan aturan game biasa, lalu diverifikasi hingga kemenangan; hasil dan batas cakupan ada di [catatan demo](docs/demo.md). Video disimpan di `dist/Turnforge-Demo.mp4`; publikasi portofolio dan pembaruan CV tetap ditunda.
+
 ### Checklist kesiapan rilis
 
 - [ ] Paket berjalan offline tanpa memasang compiler/IDE.
@@ -684,6 +686,8 @@ Pertanyaan ini tidak menghalangi penyimpanan PRD; keputusan yang memengaruhi set
 
 ### 17.2 Penelusuran revisi
 
+Versi 1.7 mencatat artefak demo lokal dan alur perekaman yang dapat diulang untuk kebutuhan distribusi Bagian 13. Tidak ada perubahan aturan combat, statistik, map, atau AI.
+
 Versi 1.6 menambahkan preview aksi musuh, simulasi read-only memakai AI yang sama, indikator tujuan/target/HP loss, serta AC-18–AC-20. Aturan combat dan AI tidak diubah.
 
 Versi 1.5 menambahkan aksi Bertahan, biaya aksi, lifecycle perlindungan, indikator perisai, angka damage aktual, dan AC-15–AC-17. Publikasi portofolio serta pembaruan CV ditunda atas permintaan pengguna.
@@ -708,4 +712,4 @@ Pola kerja: **Ponytail level full**, yaitu implementasi terkecil yang memenuhi k
 
 ---
 
-*Akhir dokumen — PRD v1.6*
+*Akhir dokumen — PRD v1.7*

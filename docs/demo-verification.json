@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "frames": 1980,
+  "fps": 30,
+  "duration_seconds": 66,
+  "attacks": 4,
+  "guard_reduced_actual_hit": true,
+  "won": true,
+  "round": 6,
+  "player_hp": 3,
+  "video_codec": "H.264 / yuv420p",
+  "width": 1280,
+  "height": 720,
+  "fully_decoded_frames": 1980,
+  "video_sha256": "B14B59740ED6A4B4D542A8DD7E6F6C99352F7120B2A9AC83F846B1B4686FD281",
+  "video_bytes": 1720228,
+  "recording_method": "Offline fixed-step scripted replay through the live input controller",
+  "encoded_sample_frames": [
+    0,
+    120,
+    180,
+    660,
+    930,
+    1200,
+    1800
+  ],
+  "visual_inspection_passed": true,
+  "game_executable_sha256": "DDAA69EF32DE8132BDE094BB6973E347F08D4A5629C18EFD0CA9E7BB565BE2AC"
+}

@@ -2,13 +2,27 @@
 
 A small, offline turn-based tactical game built with C++17 and raylib 5.5.
 
-**Current version:** v0.5.0 · **Verified platform:** Windows · **Genre:** 2D tactical strategy
+**Current version:** v0.5.1 · **Verified platform:** Windows · **Genre:** 2D tactical strategy
 
 Move across an 8x8 arena, choose between attacking and guarding, and defeat two enemies. The project focuses on BFS pathfinding, deterministic enemy AI, validated gameplay rules, and a playable Windows build.
 
 ![Turnforge gameplay](docs/screenshots/v0.5/02-gameplay.png)
 
-[Gameplay](#gameplay) · [Play and controls](#play) · [Build](#build-on-windows) · [Design](#design) · [Measured results](#measured-results) · [Tests](#automated-rendering-checks) · [Attribution](#scope-and-attribution)
+[Demo](#local-gameplay-demo) · [Gameplay](#gameplay) · [Play and controls](#play) · [Build](#build-on-windows) · [Design](#design) · [Measured results](#measured-results) · [Tests](#automated-rendering-checks) · [Attribution](#scope-and-attribution)
+
+## Local gameplay demo
+
+A 66-second scripted replay shows wall rejection, a BFS route, enemy intentions, Guard reducing an actual hit, combat, and victory in one complete match. The generated video is `dist/Turnforge-Demo.mp4` (1280×720, 30 FPS, H.264; silent). The video remains local while portfolio publication is deferred.
+
+[![Demo poster](docs/screenshots/demo-poster.png)](docs/demo.md)
+
+[Storyboard, recording instructions, and verification](docs/demo.md). From a built source checkout, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/record-demo.ps1
+```
+
+The recorder renders offline at a fixed time step and labels the result `SCRIPTED REPLAY`. Video frame rate is separate from live rendering performance. v0.5.1 adds this recording workflow; the gameplay/performance baseline below is from v0.5.0.
 
 ## Gameplay
 
@@ -148,6 +162,8 @@ The v0.5.0 Release build was checked on Windows with an Intel Core i5-10310U and
 | Peak process working set | 142.59 MB |
 | Render smoke check | Eleven screenshots, preview, Guard, victory/defeat, and ten restarts passed |
 | Windows package | Passed with PATH restricted to Windows system directories |
+
+Later v0.5.1 recording QA included a sequential 30-second comparison: the old and new builds recorded approximately 38.7 and 39.8 FPS in hidden windows under the current conditions. The lower results and test limits are documented in the [demo verification notes](docs/demo.md#verification); the table above retains the earlier three-minute baseline.
 
 The 60 FPS target was not fully reached in this run. Hidden-window results do not guarantee visible-window performance; physical mouse/keyboard playtesting and broader balance testing remain outstanding. See the [current verification report](docs/preview-verification.md) for methods, raw reports, and limits.
 

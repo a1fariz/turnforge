@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(Turnforge VERSION 0.5.0 LANGUAGES C CXX)
+project(Turnforge VERSION 0.5.1 LANGUAGES C CXX)
 
 option(TURNFORGE_BUILD_GAME "Build the raylib desktop game" ON)
 set(CMAKE_CXX_STANDARD 17)

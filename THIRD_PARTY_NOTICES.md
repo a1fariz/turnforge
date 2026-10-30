@@ -12,3 +12,5 @@ Upstream sources:
 - stb: license statements in raylib's `src/external/stb_*.h`
 
 CMake is used only as a development tool. The project-local portable CMake distribution retains its own notices and is not included in the game ZIP. The MinGW compiler and Ninja are not included in the game ZIP.
+
+The optional demo-recording script uses an installed FFmpeg or a pinned executable extracted from [imageio-ffmpeg 0.7.0](https://pypi.org/project/imageio-ffmpeg/0.7.0/). The downloaded FFmpeg 7.1 build reports GPL-enabled configuration and libx264 support. Its archive and package metadata stay in the ignored `.tools` directory. This tool is not linked into the game or bundled in the Windows release. See [encoder provenance](docs/demo.md#encoder-provenance) for the archive hash and recording method.
