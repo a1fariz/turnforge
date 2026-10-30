@@ -3,3 +3,14 @@
 /.deps/
 /.tools/
 *.zip
+
+# Local credentials and private keys
+.env*
+*.pem
+*.key
+*.p12
+*.pfx
+auth.json
+credentials*.json
+secrets*.json
+/.vercel/

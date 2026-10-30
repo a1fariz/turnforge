@@ -12,7 +12,7 @@ Move across an 8x8 arena, choose between attacking and guarding, and defeat two 
 
 ## Local gameplay demo
 
-A 66-second scripted replay shows wall rejection, a BFS route, enemy intentions, Guard reducing an actual hit, combat, and victory in one complete match. The generated video is `dist/Turnforge-Demo.mp4` (1280×720, 30 FPS, H.264; silent). The video remains local while portfolio publication is deferred.
+A 66-second scripted replay shows wall rejection, a BFS route, enemy intentions, Guard reducing an actual hit, combat, and victory in one complete match. The generated video is `dist/Turnforge-Demo.mp4` (1280×720, 30 FPS, H.264; silent). The demo is published with the [Windows release](https://github.com/a1fariz/turnforge/releases/tag/v0.5.1) and the [portfolio case study](https://alfarizi.my.id/work/turnforge).
 
 [![Demo poster](docs/screenshots/demo-poster.png)](docs/demo.md)
 
@@ -53,7 +53,7 @@ Movement and combat use four directions. Walls and living units block paths. The
 
 Extract the complete Windows release package, then open `turnforge.exe`. Keep the bundled `assets` folder beside the executable. No compiler, account, or network connection is required to play.
 
-This repository contains the source, artwork, and documentation. Build outputs and the Windows ZIP are generated locally with the command below; they are not committed to Git.
+Download the ready-to-play [Windows ZIP](https://github.com/a1fariz/turnforge/releases/download/v0.5.1/Turnforge-Windows.zip), or build from source below. Release binaries are hosted as GitHub release assets and kept outside the source history.
 
 | Input | Action |
 |---|---|
@@ -99,7 +99,7 @@ Tip: finish an injured enemy when possible instead of splitting attacks between 
 
 From a source checkout, requirements are a C++17 compiler on PATH (the provided script uses MinGW-w64 `g++` and `gcc`), PowerShell, and an OpenGL 3.3-capable graphics driver. The script uses CMake on PATH or a project-local portable copy. The first dependency download requires internet; versions and archive hashes are pinned.
 
-Clone the repository first. Access to this private repository requires an authorized GitHub account.
+Clone the public repository first.
 
 ```powershell
 git clone https://github.com/a1fariz/turnforge.git

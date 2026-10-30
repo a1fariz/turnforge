@@ -18,4 +18,4 @@ Keep the game offline, 2D, turn-based, and suitable for the target integrated-GP
 
 Maintain the existing 17-section Indonesian PRD format. Documentation diagrams should be readable, formal PNG images embedded in the document. Distinguish measured results from targets and disclose AI-assisted code/artwork accurately.
 
-Portfolio publication and CV updates are deferred until the owner resumes those tasks. Creating this private repository does not resume them.
+The owner authorized publishing Turnforge on alfarizi.my.id and making this repository public. Keep credentials and private provider configuration out of source, history, browser assets, and release packages. CV updates remain deferred until explicitly resumed.

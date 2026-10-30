@@ -2,7 +2,7 @@
 
 The local demo is a **66-second, 1280×720, 30 FPS, H.264 MP4** at `dist/Turnforge-Demo.mp4`. It is a scripted replay of one complete match from the default map and stats, with English chapter captions over the Indonesian game UI. The video has no audio, matching the game's current scope.
 
-The video binary is a generated local artifact. The repository contains the recorder, poster, storyboard, and verification evidence; portfolio/video hosting and CV updates remain deferred.
+The video and Windows ZIP are published as [GitHub release assets](https://github.com/a1fariz/turnforge/releases/tag/v0.5.1) and presented in the [portfolio case study](https://alfarizi.my.id/work/turnforge). The source history contains the recorder, poster, storyboard, and verification evidence. CV updates remain deferred.
 
 ![Demo poster](screenshots/demo-poster.png)
 
